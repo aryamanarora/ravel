@@ -28,6 +28,11 @@ from utils.generate_ravel_instance import RAVELMetadata, gen_context_test_split,
 from utils.intervention_utils import eval_with_interventions, remove_all_forward_hooks
 from utils.metric_utils import compute_metrics, compute_disentangle_score
 
+
+def _get_inv(v):
+    """Unwrap intervention value (handles both old tuple and new direct formats)."""
+    return v[0] if isinstance(v, (list, tuple)) else v
+
 # ─── Config ───
 MODEL_NAME = "meta-llama/Llama-2-7b-hf"
 INSTANCE = "llama2-7b"
@@ -546,7 +551,7 @@ def main():
 
     das_intervenable, _ = run_das(das_config, model, tokenizer, split_to_dataset)
     torch.save(
-        {k: v[0].rotate_layer.weight for k, v in das_intervenable.interventions.items()},
+        {k: (_get_inv(v)).rotate_layer.weight for k, v in das_intervenable.interventions.items()},
         os.path.join(MODEL_DIR, 'das_continent.pt'))
     all_results['DAS'] = evaluate(
         das_intervenable, split_to_dataset, split_to_inv_locations,
@@ -563,7 +568,7 @@ def main():
 
     comp_intervenable, _ = run_complement_das(comp_config, model, tokenizer, split_to_dataset)
     torch.save(
-        {k: v[0].rotate_layer.weight for k, v in comp_intervenable.interventions.items()},
+        {k: (_get_inv(v)).rotate_layer.weight for k, v in comp_intervenable.interventions.items()},
         os.path.join(MODEL_DIR, 'comp_das_continent.pt'))
     all_results['Complement_DAS'] = evaluate(
         comp_intervenable, split_to_dataset, split_to_inv_locations,

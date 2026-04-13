@@ -15,6 +15,11 @@ from utils.intervention_utils import train_intervention_step, eval_with_interven
 from utils.metric_utils import compute_metrics, compute_cross_entropy_loss
 
 
+def _get_inv(v):
+  """Unwrap intervention value (handles both old tuple and new direct formats)."""
+  return v[0] if isinstance(v, (list, tuple)) else v
+
+
 def train_intervention(config, model, tokenizer, split_to_dataset):
   print('Training Tasks: %s' % config['training_tasks'])
   # Load datasets.
@@ -75,10 +80,11 @@ def train_intervention(config, model, tokenizer, split_to_dataset):
   regularization_coefficient = config['regularization_coefficient']
   optimizer_params = []
   for k, v in intervenable.interventions.items():
-    if isinstance(v[0], LowRankRotatedSpaceIntervention):
-      optimizer_params += [{'params': v[0].rotate_layer.parameters()}]
-    elif isinstance(v[0], DifferentialBinaryMasking):
-      optimizer_params += [{'params': v[0].parameters()}]
+    inv = _get_inv(v)
+    if isinstance(inv, LowRankRotatedSpaceIntervention):
+      optimizer_params += [{'params': inv.rotate_layer.parameters()}]
+    elif isinstance(inv, DifferentialBinaryMasking):
+      optimizer_params += [{'params': inv.parameters()}]
     else:
       raise NotImplementedError
   optimizer = torch.optim.AdamW(optimizer_params,
@@ -98,9 +104,9 @@ def train_intervention(config, model, tokenizer, split_to_dataset):
                                           num_epoch * len(train_dataloader) +
                                           1).to(torch.bfloat16).to(model.device)
     for k, v in intervenable.interventions.items():
-      if isinstance(v[0], DifferentialBinaryMasking):
-        intervenable.interventions[k][0].set_temperature(
-            temperature_schedule[scheduler._step_count])
+      inv = _get_inv(v)
+      if isinstance(inv, DifferentialBinaryMasking):
+        inv.set_temperature(temperature_schedule[scheduler._step_count])
 
   # Training loop.
   train_iterator = trange(0, int(num_epoch), desc="Epoch")
@@ -148,13 +154,10 @@ def train_intervention(config, model, tokenizer, split_to_dataset):
                                         pad_token_id=tokenizer.pad_token_id)
       # Add sparsity loss for Differential Binary Masking.
       for k, v in intervenable.interventions.items():
-        if isinstance(
-            list(intervenable.interventions.values())[0][0],
-            DifferentialBinaryMasking):
-          loss += regularization_coefficient * intervenable.interventions[k][
-              0].get_sparsity_loss()
-          intervenable.interventions[k][0].set_temperature(
-              temperature_schedule[scheduler._step_count])
+        inv = _get_inv(v)
+        if isinstance(inv, DifferentialBinaryMasking):
+          loss += regularization_coefficient * inv.get_sparsity_loss()
+          inv.set_temperature(temperature_schedule[scheduler._step_count])
 
       aggreated_stats['loss'].append(loss.item())
       aggreated_stats['acc'].append(eval_metrics["accuracy"])

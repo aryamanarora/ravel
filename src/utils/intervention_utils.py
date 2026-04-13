@@ -17,6 +17,11 @@ from torch.nn import CrossEntropyLoss
 from utils.dataset_utils import get_dataloader, get_label_offset
 
 
+def _get_inv(v):
+  """Unwrap intervention value (handles both old tuple and new direct formats)."""
+  return v[0] if isinstance(v, (list, tuple)) else v
+
+
 def get_intervention_config(model_type,
                             intervention_representations,
                             layers,
@@ -306,9 +311,9 @@ def load_intervenable_with_pca(model, pca_param_path):
   intervenable.set_device("cuda")
   intervenable.disable_model_gradients()
   key = list(intervenable.interventions)[0]
-  intervenable.interventions[key][0].set_pca_params(pca_params)
-  print('#Principal Components=%d' %
-        intervenable.interventions[key][0].pca_components.shape[0])
+  inv = _get_inv(intervenable.interventions[key])
+  inv.set_pca_params(pca_params)
+  print('#Principal Components=%d' % inv.pca_components.shape[0])
   return intervenable
 
 
@@ -322,8 +327,9 @@ def load_intervenable_with_autoencoder(model, autoencoder, inv_dims, layer):
   intervenable.set_device("cuda")
   intervenable.disable_model_gradients()
   for k in intervenable.interventions:
-    intervenable.interventions[k][0].autoencoder = autoencoder
-    intervenable.interventions[k][0].inv_dims = inv_dims
+    inv = _get_inv(intervenable.interventions[k])
+    inv.autoencoder = autoencoder
+    inv.inv_dims = inv_dims
   intervenable.model.eval()
   return intervenable
 
@@ -363,8 +369,8 @@ def load_intervenable(base_model, pretrained_weight_or_path,
   intervenable.set_device("cuda")
   intervenable.disable_model_gradients()
   for k, v in rotate_layers.items():
-    intervenable.interventions[k][0].rotate_layer = v
-    intervenable.interventions[k][0].set_interchange_dim(
-        interchange_dim=v.weight.shape[0])
+    inv = _get_inv(intervenable.interventions[k])
+    inv.rotate_layer = v
+    inv.set_interchange_dim(interchange_dim=v.weight.shape[0])
   intervenable.model.eval()
   return intervenable

@@ -24,6 +24,11 @@ from utils.intervention_utils import (train_intervention_step,
 from utils.metric_utils import compute_metrics, compute_cross_entropy_loss
 
 
+def _get_inv(v):
+  """Unwrap intervention value (handles both old tuple and new direct formats)."""
+  return v[0] if isinstance(v, (list, tuple)) else v
+
+
 def train_intervention_complement(config, model, tokenizer, split_to_dataset):
   training_task = config['training_task']
   print('Training task: %s' % training_task)
@@ -67,7 +72,7 @@ def train_intervention_complement(config, model, tokenizer, split_to_dataset):
   complement_loss_coefficient = config.get('complement_loss_coefficient', 1.0)
   optimizer_params = []
   for k, v in intervenable.interventions.items():
-    optimizer_params += [{'params': v[0].rotate_layer.parameters()}]
+    optimizer_params += [{'params': _get_inv(v).rotate_layer.parameters()}]
   optimizer = torch.optim.AdamW(optimizer_params,
                                 lr=config['init_lr'],
                                 weight_decay=0)
@@ -109,7 +114,7 @@ def train_intervention_complement(config, model, tokenizer, split_to_dataset):
 
       # --- Pass 1: standard intervention ---
       for k, v in intervenable.interventions.items():
-        v[0].set_complement(False)
+        _get_inv(v).set_complement(False)
       counterfactual_outputs = train_intervention_step(
           intervenable,
           inputs,
@@ -129,7 +134,7 @@ def train_intervention_complement(config, model, tokenizer, split_to_dataset):
 
       # --- Pass 2: complement intervention ---
       for k, v in intervenable.interventions.items():
-        v[0].set_complement(True)
+        _get_inv(v).set_complement(True)
       complement_outputs = train_intervention_step(
           intervenable,
           inputs,
@@ -149,7 +154,7 @@ def train_intervention_complement(config, model, tokenizer, split_to_dataset):
 
       # Reset complement flag.
       for k, v in intervenable.interventions.items():
-        v[0].set_complement(False)
+        _get_inv(v).set_complement(False)
 
       # Combined loss.
       loss = loss_cause + complement_loss_coefficient * loss_iso

@@ -50,7 +50,7 @@ def get_intervention_config(model_type,
 
 
 def train_intervention_step(intervenable, inputs, split_to_inv_locations,
-                            pad_token_id):
+                            pad_token_id, teacher_label_key='labels'):
   inputs = copy.deepcopy(inputs)
   b_s = inputs["input_ids"].shape[0]
   # Set intervention locations.
@@ -66,8 +66,9 @@ def train_intervention_step(intervenable, inputs, split_to_inv_locations,
       ]] * num_inv)
   }
   # Append label to input.
-  inputs['labels'][inputs['labels'] < 0] = pad_token_id
-  inputs['input_ids'] = torch.cat([inputs['input_ids'], inputs['labels']],
+  teacher_labels = inputs[teacher_label_key]
+  teacher_labels[teacher_labels < 0] = pad_token_id
+  inputs['input_ids'] = torch.cat([inputs['input_ids'], teacher_labels],
                                   dim=-1)
   inputs['attention_mask'] = torch.zeros(inputs['input_ids'].shape,
                                          dtype=inputs['attention_mask'].dtype,

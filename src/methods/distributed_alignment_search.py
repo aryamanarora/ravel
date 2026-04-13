@@ -14,6 +14,10 @@ class LowRankRotatedSpaceIntervention(pv.TrainableIntervention):
                         kwargs["low_rank_dimension"],
                         bias=False))
     self.embed_dim = embed_dim
+    self.complement = False
+
+  def set_complement(self, value: bool):
+    self.complement = value
 
   def forward(self, base, source, subspaces=None):
     input_dtype, model_dtype = base.dtype, self.rotate_layer.weight.dtype
@@ -21,6 +25,11 @@ class LowRankRotatedSpaceIntervention(pv.TrainableIntervention):
     rotated_base = self.rotate_layer(base)
     rotated_source = self.rotate_layer(source)
     # Apply interchange interventions.
-    output = base + torch.matmul(
-        (rotated_source - rotated_base), self.rotate_layer.weight)
+    if self.complement:
+      # h = s + R^T(Rb - Rs): keep base in-subspace, source out-of-subspace.
+      output = source + torch.matmul(
+          (rotated_base - rotated_source), self.rotate_layer.weight)
+    else:
+      output = base + torch.matmul(
+          (rotated_source - rotated_base), self.rotate_layer.weight)
     return output.to(input_dtype)

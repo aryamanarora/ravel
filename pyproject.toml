@@ -1,0 +1,18 @@
+[project]
+name = "ravel"
+version = "0.1.0"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "accelerate>=0.29",
+    "datasets>=2.19",
+    "h5py>=3.11",
+    "huggingface-hub>=0.22",
+    "scikit-learn>=1.4",
+    "tokenizers>=0.19",
+    "torch>=2.4",
+    "torchvision>=0.19",
+    "tqdm>=4.66",
+    "transformers>=4.40",
+    "pyvene @ git+https://github.com/stanfordnlp/pyvene.git",
+    "tensorboard",
+]

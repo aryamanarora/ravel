@@ -13,6 +13,6 @@ dependencies = [
     "torchvision>=0.19",
     "tqdm>=4.66",
     "transformers>=4.40",
-    "pyvene @ git+https://github.com/stanfordnlp/pyvene.git",
+    "pyvene @ git+https://github.com/stanfordnlp/pyvene.git@d29f9591ca61753d66ba25f6cc3a4c05bab48480",
     "tensorboard",
 ]

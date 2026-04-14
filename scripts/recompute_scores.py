@@ -45,5 +45,9 @@ for method, path in eval_files.items():
     n_cause = sum(len(v) for v in attribute_to_cause_tasks.values())
     print(f"\n{method}: {n_cause} cause splits, {n_iso} iso splits")
 
+    # Filter out attributes with no matching test splits.
+    attribute_to_iso_tasks = {a: ts for a, ts in attribute_to_iso_tasks.items() if ts}
+    attribute_to_cause_tasks = {a: ts for a, ts in attribute_to_cause_tasks.items() if ts}
+
     scores = compute_disentangle_score(data, attribute_to_iso_tasks, attribute_to_cause_tasks)
     print(f"{method:<20} {scores['disentangle']:>12.4f} {scores['isolate']:>12.4f} {scores['cause']:>12.4f}")

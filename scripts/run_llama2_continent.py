@@ -47,7 +47,7 @@ TRAINING_BATCH_SIZE = 16
 EVAL_BATCH_SIZE = 64
 CAUSE_TASK_SAMPLE_SIZE = 20000
 LR = 1e-4
-COMPLEMENT_LOSS_COEFF = 1.0
+COMPLEMENT_LOSS_COEFF = 10.0
 
 REPO_DIR = os.path.join(SCRIPT_DIR, '..')
 DATA_DIR = os.path.join(REPO_DIR, 'run_data')
@@ -544,35 +544,41 @@ def main():
     all_results = {}
 
     # ─── 1. Regular DAS (single-task, cause only) ───
-    das_config = {**base_config}
-    das_config['training_tasks'] = {TARGET_ATTR: 'match_source'}
-    das_config['log_dir'] = os.path.join(MODEL_DIR, 'logs', 'das_continent')
-    os.makedirs(das_config['log_dir'], exist_ok=True)
+    # Skip if already run — results in DAS_Continent_evalall.json
+    das_eval_path = os.path.join(MODEL_DIR, 'DAS_Continent_evalall.json')
+    if os.path.exists(das_eval_path):
+        print(f"\nSkipping DAS training — eval already exists at {das_eval_path}")
+    else:
+        das_config = {**base_config}
+        das_config['training_tasks'] = {TARGET_ATTR: 'match_source'}
+        das_config['log_dir'] = os.path.join(MODEL_DIR, 'logs', 'das_continent')
+        os.makedirs(das_config['log_dir'], exist_ok=True)
 
-    das_intervenable, _ = run_das(das_config, model, tokenizer, split_to_dataset)
-    torch.save(
-        {k: (_get_inv(v)).rotate_layer.weight for k, v in das_intervenable.interventions.items()},
-        os.path.join(MODEL_DIR, 'das_continent.pt'))
-    all_results['DAS'] = evaluate(
-        das_intervenable, split_to_dataset, split_to_inv_locations,
-        tokenizer, kept_attr_to_prompt_and_split, "DAS_Continent")
-    del das_intervenable
-    torch.cuda.empty_cache()
+        das_intervenable, _ = run_das(das_config, model, tokenizer, split_to_dataset)
+        torch.save(
+            {k: (_get_inv(v)).rotate_layer.weight for k, v in das_intervenable.interventions.items()},
+            os.path.join(MODEL_DIR, 'das_continent.pt'))
+        all_results['DAS'] = evaluate(
+            das_intervenable, split_to_dataset, split_to_inv_locations,
+            tokenizer, kept_attr_to_prompt_and_split, "DAS_Continent")
+        del das_intervenable
+        torch.cuda.empty_cache()
 
     # ─── 2. Complement DAS ───
+    alpha_tag = f"a{COMPLEMENT_LOSS_COEFF:g}"
     comp_config = {**base_config}
     comp_config['training_task'] = TARGET_ATTR
     comp_config['complement_loss_coefficient'] = COMPLEMENT_LOSS_COEFF
-    comp_config['log_dir'] = os.path.join(MODEL_DIR, 'logs', 'comp_das_continent')
+    comp_config['log_dir'] = os.path.join(MODEL_DIR, 'logs', f'comp_das_continent_{alpha_tag}')
     os.makedirs(comp_config['log_dir'], exist_ok=True)
 
     comp_intervenable, _ = run_complement_das(comp_config, model, tokenizer, split_to_dataset)
     torch.save(
         {k: (_get_inv(v)).rotate_layer.weight for k, v in comp_intervenable.interventions.items()},
-        os.path.join(MODEL_DIR, 'comp_das_continent.pt'))
-    all_results['Complement_DAS'] = evaluate(
+        os.path.join(MODEL_DIR, f'comp_das_continent_{alpha_tag}.pt'))
+    all_results[f'Complement_DAS_{alpha_tag}'] = evaluate(
         comp_intervenable, split_to_dataset, split_to_inv_locations,
-        tokenizer, kept_attr_to_prompt_and_split, "CompDAS_Continent")
+        tokenizer, kept_attr_to_prompt_and_split, f"CompDAS_Continent_{alpha_tag}")
     del comp_intervenable
     torch.cuda.empty_cache()
 

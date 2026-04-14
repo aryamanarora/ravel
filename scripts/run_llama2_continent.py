@@ -464,7 +464,7 @@ def main():
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = 'left'
     model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME, torch_dtype=torch.bfloat16, device_map="auto")
+        MODEL_NAME, torch_dtype=torch.bfloat16).to("cuda")
     model.eval()
     print(f"Hidden size: {model.config.hidden_size}, Layers: {model.config.num_hidden_layers}")
 
